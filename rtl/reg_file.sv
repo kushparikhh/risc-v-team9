@@ -9,15 +9,15 @@ module reg_file #(
         input logic WE3,
         output logic [REG_WIDTH-1:0] RD1,
         output logic [REG_WIDTH-1:0] RD2,
-        output logic [REG_WIDTH-1:0] a0,
+        output logic [REG_WIDTH-1:0] a0
     );
 
-    logic [REG_WIDTH-1:0] reg_val [2**REG_ADDDR-1:0];
+    logic [REG_WIDTH-1:0] reg_val [2**REG_ADDR-1:0];
 
     always_comb begin
-        RD1 <= reg_val[AD1];
-        RD2 <= reg_val[AD2];
-        a0 <= reg_val[5'd10];
+        RD1 = reg_val[AD1];
+        RD2 = reg_val[AD2];
+        a0 = reg_val[5'd10];
     end
 
     always_ff @(negedge clk)begin
