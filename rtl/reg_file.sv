@@ -21,7 +21,7 @@ module reg_file #(
     end
 
     always_ff @(negedge clk)begin
-        if(WE3) begin
+        if(WE3 && AD3 != 5'd0) begin
             reg_val[AD3] <= WD3;
         end
     
