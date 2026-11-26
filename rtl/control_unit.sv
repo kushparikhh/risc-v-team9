@@ -13,8 +13,9 @@ module control_unit (
     output logic       RegWrite     // register write enable
 );
 
-    logic [1:0] ALUOp;   // main decoder to ALU decoder
-    
+    logic [1:0] ALUOp;   // decoder to ALU decoder
+    logic       Branch;  // beq, bne
+    logic       Jump;    // jal, jalr
 
 always_comb begin
     // default values 
@@ -28,7 +29,7 @@ always_comb begin
     ALUOp     = 2'b00;
 
     case (op)
-        //loading instructions (lw and lbu)
+        //loading instruction (lw and lbu)
         7'b0000011: begin           
             RegWrite  = 1'b1;
             ALUSrc    = 1'b1;
@@ -82,5 +83,52 @@ always_comb begin
     endcase
 end
 
+
+// ALU decoder
+// ALUOp come from main decoder and tell what type instruction it is
+// if Register or int typee then funct3 decide the actual operation
+always_comb
+    case (ALUOp)
+        2'b00:   ALUControl = 4'b0000;          // add, load and store need it for address, jalr for jump target
+        2'b01:   ALUControl = 4'b0001;          // sub, for beq and bne we subtract rs1 and rs2 so Zero is 1 when they same
+
+        2'b10:                                  // R-type and I-type, need check funct3 for operation
+            case (funct3)
+                3'b000:  if (op[5] == 1'b1 && funct7b5 == 1'b1)
+                             ALUControl = 4'b0001;      // sub, op[5] only 1 for R-type so addi with negative imm dont become sub
+                         else
+                             ALUControl = 4'b0000;    // add or addi
+                3'b001:  ALUControl = 4'b0101;        // shift left logical, sll or slli
+                3'b010:  ALUControl = 4'b1000;        // set less than (signed), slt or slti
+                3'b011:  ALUControl = 4'b1001;        // set less than unsigned, sltu or sltiu
+                3'b100:  ALUControl = 4'b0100;        // xor or xori
+                3'b101:  if (funct7b5 == 1'b1)
+                             ALUControl = 4'b0111;    // shift right arithmetic, keep sign bit, sra or srai
+                         else
+                             ALUControl = 4'b0110;    // shift right logical, fill zero, srl or srli
+                3'b110:  ALUControl = 4'b0011;        // or or ori
+                3'b111:  ALUControl = 4'b0010;        // and or andi
+                default: ALUControl = 4'b0000;        // funct3 not used so just add
+            endcase
+        default: ALUControl = 4'b0000;       
+                 // ALUOp not used so just add
+    endcase
+    
+
+
+// PC source logic which decides where next instruction is from
+// jalr check first because it set Jump too but need use ALU result
+always_comb
+    if (op == 7'b1100111)
+        PCSrc = 2'b10;        // jalr, go to rs1 + imm which ALU already calculate
+    else if (Jump == 1'b1)
+        PCSrc = 2'b01;       // jal, go to PC + imm from the target adder
+    else if (Branch == 1'b1 && funct3 == 3'b000 && Zero == 1'b1)
+        PCSrc = 2'b01;       // beq taken when rs1 equal rs2 so ALU give zero
+    else if (Branch == 1'b1 && funct3 == 3'b001 && Zero == 1'b0)
+        PCSrc = 2'b01;       // bne taken when rs1 not equal rs2 so ALU not zero
+    else
+        PCSrc = 2'b00;        // normal case, go to PC + 4
+ 
 
 endmodule
