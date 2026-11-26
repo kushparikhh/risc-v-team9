@@ -3,6 +3,7 @@ module top #(
 ) (
     input   logic clk,
     input   logic rst,
+    input   logic trigger,
     output  logic [DATA_WIDTH-1:0] a0    
 );
     assign a0 = 32'd5;
